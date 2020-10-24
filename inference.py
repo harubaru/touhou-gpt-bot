@@ -16,6 +16,8 @@ parser = argparse.ArgumentParser(description='Input argument parser.')
 
 parser.add_argument('--model_dir', type=str, help='path of model folder')
 
+parser.add_argument('--custom_model', type=str, help='path to custom model')
+
 parser.add_argument('--nucleus', help='flag to turn on/off nucleus sampling', action='store_true')
 
 parser.add_argument('--top_p', type=float, help='cut off probablity for nucleus sampling',
@@ -46,8 +48,12 @@ def main():
         print('model path must be provided.')
         print('quit program.')
         exit()
+    
+    if args.custom_model:
+        args.model_path = args.custom_model
+    else:
+        args.model_path = args.model_dir + "model.ckpt"
 
-    args.model_path = args.model_dir + "model.ckpt"
     args.json_hparams = args.model_dir + "hparams.json"
     args.json_encoder = args.model_dir + "encoder.json"
     args.vocab_bpe = args.model_dir + "vocab.bpe"

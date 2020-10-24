@@ -8,11 +8,6 @@ TensorFlow 2 implementation of GTP2 for fine-tuning on a single GPU.
 3. [Examples](#examples)
 	1. [Text Generation](#text-generation)
 	2. [Text Summarization](#text-summarization)
-	3. [Conversational Question and Answer](#conversational-qa)
-4. [Large Models](#large-models)
-	1. [Text Generation 774M](#text-generation-774M)
-	2. [Text Summarization 774M](#text-summarization-774M)
-	3. [Conversational Question and Answer 774M](#conversational-qa-774M)	
 
 
 ## Setup <a name="setup"></a>
@@ -63,10 +58,7 @@ First, let see what the pre-trained model (no fine-tuning) produces:
 
 ```
 python inference.py \
---model_path=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
+--model_dir=models/124M/ \
 --nucleus \
 --top_p=0.8 \
 --temperature=1.0 \
@@ -102,12 +94,8 @@ The following command fine-tunes the 355M model on `Kill Bill` for five epochs, 
 
 ```
 python finetune.py \
---model=355M \
---model_ckpt=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
---output_name=killbill_355M_5x2000.h5 \
+--model_dir=models/124M/ \
+--output_name=killbill_124M_5x2000.h5 \
 --dataset_path=dataset/killbill.txt \
 --data_loader=text \
 --num_epoch=5 \
@@ -119,10 +107,8 @@ To test the fine-tuned model, we generate 200 tokens using `nucleus sampling` wi
 
 ```
 python inference.py \
---model_path=output/killbill_355M_5x2000.h5 \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
+--model_dir=models/124M/
+--custom_model=output/killbill_355M_5x2000.h5 \
 --nucleus \
 --top_p=1.0 \
 --temperature=1.0 \
@@ -161,53 +147,6 @@ Yuki giggles.
 
 As you can see, the output start looks a lot more like a screenplay, with the correct format and characters from `Kill Bill` (THE BRIDE and YUKI). 
 
-Let's now fine-tune GPT2 on R.R. Martin's five books of `A Song of Ice and Fire`:
-
-```
-python finetune.py \
---model=355M \
---model_ckpt=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
---output_name=CompleteRRMartin_355M_5x2000.h5 \
---dataset_path=dataset/CompleteRRMartin.txt \
---data_loader=text \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-
-python inference.py \
---model_path=output/CompleteRRMartin_355M_5x2000.h5 \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter='She picked up the sword'
-```
-
-And this is one example output:
-
-```
-She picked up the sword before her she could drop it. “When I send a message at Horos, 
-I tell him that Horos was to take the black wolf, save my hands. A soul goes in to watch over 
-my arms, arms, and feet too. Beneath the sense of fear, every man is fearful, undead. 
-The Wall gives fathers away. Only the echoing voice allows the dead to emerge from our shadows, 
-unseen. The leaves will send them away, and thrice that man who stirs the dead will alter and grow stronger.”
-
-She had crossed the narrow sea before, exporting raw from the coast that had been her home. 
-Leaving Horos only had proved to be offering no sort of comfort to Tyrion. Like the despairs, 
-most of what he said ended according to whim, which made no sense to most of Whores’s ship. 
-And her proud voice, Yezzan’s, woken only when creak made of bells.
-```
-
-Amazingly, the output uses many concepts from `A Song of Ice and Fire`. It talks about the `wall,` `the black wolf,` `the dead,` and `the nerrow sea.` It also mentioned the popular figure `Tyrion,` and a less significant character `Yezzan` (an extremely wealthy slave trader, and one of the Wise Masters from Yunkai). It also invented a new character/place named `Horos.` 
-
-
-
 ### Text Summarization <a name="text-summarization"></a>
 
 
@@ -218,10 +157,7 @@ for "zero-shot" text summarization:
 
 ```
 python inference.py \
---model_path=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
+--model_dir=models/355M/ \
 --nucleus \
 --top_p=1.0 \
 --temperature=1.0 \
@@ -295,11 +231,7 @@ To fine-tune the `355M` model, we point the `dataset_path` to the [preprocessed 
 
 ```
 python finetune.py \
---model=355M \
---model_ckpt=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
+--model_dir=models/355M/ \
 --output_name=cnndm_355M_5x2000.h5 \
 --dataset_path=/home/ubuntu/data/summarization \
 --data_loader=cnndm \
@@ -358,265 +290,4 @@ TensorFlow software was a section of Google's foundation software suite
 
 # Result 3
 TensorFlow was built to express computer learning processes
-```
-
-
-### Conversational Question And Answering <a name="conversational-qa"></a>
-
-Conversational Question Answering is the ability to understand a text passage and answer a series of interconnected questions that appear in a conversation. We can also treat it as a conditional text generation problem: the condition (starter) is the text passage plus the start of a conversation, the task is to continue the conversation by asking new questions about the text passage and delivering convincing answers.
-
-For example, we can use a text passage about 2008 Summer Olympics torch relay and a few questions and answer as the starter:
-
-```
-The 2008 Summer Olympics torch relay was run from March 24 until August 8, 2008, prior to the 2008 Summer Olympics, with the theme of “one world, one dream”. Plans for the relay were announced on April 26, 2007, in Beijing, China. The relay, also called by the organizers as the “Journey of Harmony”, lasted 129 days and carried the torch 137,000 km (85,000 mi) – the longest distance of any Olympic torch relay since the tradition was started ahead of the 1936 Summer Olympics. After being lit at the birthplace of the Olympic Games in Olympia, Greece on March 24, the torch traveled to the Panathinaiko Stadium in Athens, and then to Beijing, arriving on March 31. From Beijing, the torch was following a route passing through six continents. The torch has visited cities along the Silk Road, symbolizing ancient links between China and the rest of the world. The relay also included an ascent with the flame to the top of Mount Everest on the border of Nepal and Tibet, China from the Chinese side, which was closed specially for the event. 
- Q: What was the theme? 
- A: “one world, one dream”. 
- Q: What was the length of the race? 
- A: 137,000 km 
- Q: Was it larger than previous ones? 
- A: No 
- Q: Where did the race begin? 
- A: Olympia, Greece 
- Q: Is there anything notable about that place? 
- A: birthplace of Olympic Games 
- Q: Where did they go after? 
- A: Athens 
- Q: How many days was the race? 
- A: seven 
- Q: Did they visit any notable landmarks? 
- A: Panathinaiko Stadium 
- Q: And did they climb any mountains?
-```
-
-Let's first see the performance of the pre-trained GPT2 model (355M) without fine-tuning. Here is the generated conversation:
-
-```
- A: Saturry 
- Q: ? Where did they go? A: Colorado Rockies
-  Q: had many landmarks, a mountain peak
- also similar finish to in Pad about 20 miles ... one, a human – small parachute.
-
-Q of demanding Def Dr Michelle Row, Paradise Valley located would be towns.
-
-A hike (: home week period dress or shoot ?
-
-Ryan Kerrigan Q: they from Philly? and LA en route?
-
-a: Philadelphia A Department in Louisa is connected to there city Sydney Walker taking such suburb. it is now planned into.
-
-It particular Edmonton like our number 5
-
-The P hunting action move an herb Bruce head with rapresined me New king in incoming by wrIST references Lincoln Via paper or altogether living remake Hanged Henry Colorado Arrows Denver from San Gerhardt to Alemany. Eugene who Brady by working Six many the Serpent to Ari who entire Wit's blessing Trinity from W and Tennessee
-```
-
-One can see the generated text is not a convincing conversation: it quickly drifted away from the rhythm of a conversation, neither the questions and answers are valid, and the output does reflect the context of the text passage very well.
-
-
-To fine-tune the model, we use the [CoQA dataset](https://stanfordnlp.github.io/coqa/), which contains 8000+ texts (conversations) and 127000+ questions, that is about 15.875 questions per text (conversation). This is an example from the ground-truth conversation. 
-
-
-```
-Teary Joe was a boy with a special ability: he could make himself cry in less than a second. If he disliked something, or things became difficult, Teary Joe would not hesitate to put on a pitiful face and set great big tears running down his cheeks. In this way he managed to get practically everything he wanted, because no one could resist the pity inspired by his tearful little face. 
-
-... Truncated for brevity ...
-
-
-In the end there was no cake. But that wasn't so bad, because Joe discovered it had been much more fun doing all those things that evening rather than just sitting crying to get a piece of cake that, in the end, wouldn't have been worth it.
- Q: Where did Teary and Pipo meet?
- A: Pipo was asking for change
- Q: Where?
- A: in the street
-
-... Truncated for brevity ...
-
- Q: When he got home what did he want?
- A: cake
- Q: Did he get it?
- A: no
-```
-
-
-The following command fine-tunes the 355M model for five epochs and 2000 steps per epoch on the `CoQA` dataset:
-
-
-```
-python finetune.py \
---model=355M \
---model_ckpt=models/355M/model.ckpt \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
---output_name=coqa_355M_5x2000.h5 \
---dataset_path=/home/ubuntu/data/coqa \
---data_loader=coqa \
---base_lr=0.0001 \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-```
-
-And here is the fine-tune command and the generated conversation based on the above 2008 Summer Olympics torch relay article:
-
-```
-python inference.py \
---model_path=output/coqa_355M_5x2000.h5 \
---json_hparams=models/355M/hparams.json \
---json_encoder=models/355M/encoder.json \
---vocab_bpe=models/355M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter="The 2008 Summer Olympics torch relay was run from March 24 until August 8, 2008, prior to the 2008 Summer Olympics, with the theme of \“one world, one dream\”. Plans for the relay were announced on April 26, 2007, in Beijing, China. The relay, also called by the organizers as the “Journey of Harmony”, lasted 129 days and carried the torch 137,000 km (85,000 mi) – the longest distance of any Olympic torch relay since the tradition was started ahead of the 1936 Summer Olympics. After being lit at the birthplace of the Olympic Games in Olympia, Greece on March 24, the torch traveled to the Panathinaiko Stadium in Athens, and then to Beijing, arriving on March 31. From Beijing, the torch was following a route passing through six continents. The torch has visited cities along the Silk Road, symbolizing ancient links between China and the rest of the world. The relay also included an ascent with the flame to the top of Mount Everest on the border of Nepal and Tibet, China from the Chinese side, which was closed specially for the event. \n Q: What was the theme? \n A: “one world, one dream”. \n Q: What was the length of the race? \n A: 137,000 km \n Q: Was it larger than previous ones? \n A: No \n Q: Where did the race begin? \n A: Olympia, Greece \n Q: Is there anything notable about that place? \n A: birthplace of Olympic Games \n Q: Where did they go after? \n A: Athens \n Q: How many days was the race? \n A: seven \n Q: Did they visit any notable landmarks? \n A: Panathinaiko Stadium \n Q: And did they climb any mountains? \n A:"
-
-
-
-# End of the starter
- Q: And did they climb any mountains?
-
-# Generated conversation 
- A: Yes  Mount Everest
- Q: What did they hope to reach?
- A: Top of mountain Everest, border of Nepal and Tibet
- Q: Where did they plan to go next?
- A: Beijing, China.
- Q: What concern did competition over profits?
- A: train accident
- Q: On what day, did the gold start losing value?
- A: March 24
- Q: What was the theme for the 2009 Olympics?
- A: journey of Harmony,
- Q: Was that a solar event?
- A: Yes Rawl083
-```
-
-The fine-tuned model produced text in a better format, contextually closely related to the starter and logically valid questions and answers. However, the conversation is still not flawless. For example, there should be no Olympics in the year 2009, and a "solar event" named "Rawl083" should only exist in science fiction.
-
-
-
-## Large Models <a name="large-models"></a>
-
-### Text Generation 774M <a name="text-generation-774M"></a>
-
-```
-python finetune.py \
---model=774M \
---model_ckpt=models/774M/model.ckpt \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---output_name=killbill_774M_5x2000.h5 \
---dataset_path=dataset/killbill.txt \
---data_loader=text \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-
-python inference.py \
---model_path=output/killbill_774M_5x2000.h5 \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter='She picked up the sword'
-```
-
-```
-python finetune.py \
---model=774M \
---model_ckpt=models/774M/model.ckpt \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---output_name=CompleteRRMartin_774M_5x2000.h5 \
---dataset_path=dataset/CompleteRRMartin.txt \
---data_loader=text \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-
-python inference.py \
---model_path=output/CompleteRRMartin_774M_5x2000.h5 \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter='She picked up the sword'
-```
-
-### Text Summarization 774M <a name="text-summarization-774M"></a>
-
-```
-python finetune.py \
---model=774M \
---model_ckpt=models/774M/model.ckpt \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---output_name=cnndm_774M_5x2000.h5 \
---dataset_path=/home/ubuntu/data/summarization \
---data_loader=cnndm \
---base_lr=0.0001 \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-
-
-python inference.py \
---model_path=cnndm_774M_5x2000.h5 \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter="In the Second Age of Middle-earth, the lords of Elves, Dwarves, and Men are given Rings of Power. Unbeknownst to them, the Dark Lord Sauron forges the One Ring in Mount Doom, infusing into it a great part of his power to dominate, through it and at a distance, the other Rings, so he might conquer Middle-earth. A final alliance of men and elves battles Sauron\'s forces in Mordor, where Prince Isildur of Gondor severs Sauron\'s finger, and the Ring with it, thereby destroying his physical form. With Sauron\'s first defeat, the Third Age of Middle-earth begins. Unfortunately, the Ring\'s influence corrupts Isildur, and, rather than destroy the Ring, Isildur takes it for himself. Isildur is later killed by Orcs, and the Ring is lost for 2,500 years, until it is found by Gollum, who owns it for five centuries. The Ring is then found by a hobbit named Bilbo Baggins, who turns invisible when he puts it on, but is unaware of its history. \nTL;DR:\n"
-
-python inference.py \
---model_path=cnndm_774M_5x2000.h5 \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter="TensorFlow [1] is an interface for expressing machine learning algorithms, and an implementation for executing such algorithms. A computation expressed using TensorFlow can be executed with little or no change on a wide variety of heterogeneous systems, ranging from mobile devices such as phones and tablets up to large-scale distributed systems of hundreds of machines and thousands of computational devices such as GPU cards. The system is flexible and can be used to express a wide variety of algorithms, including training and inference algorithms for deep neural network models, and it has been
-used for conducting research and for deploying machine learning systems into production across more than a dozen areas of computer science and other fields, including speech recognition, computer vision, robotics, information retrieval, natural language processing, geographic information extraction, and computational drug discovery. This paper describes the TensorFlow interface and an implementation of that interface that we have built at Google. The TensorFlow API and a reference implementation were released as an open-source package under the Apache 2.0 license in November, 2015 and are available at www.tensorflow.org. \nTL;DR:\n"
-```
-
-### Conversational Question And Answering 774M <a name="conversational-qa-774M"></a>
-
-```
-python finetune.py \
---model=774M \
---model_ckpt=models/774M/model.ckpt \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---output_name=coqa_774M_5x2000.h5 \
---dataset_path=/home/ubuntu/data/coqa \
---data_loader=coqa \
---base_lr=0.0001 \
---num_epoch=5 \
---decay_epochs="4,5" \
---steps_per_epoch=2000
-
-python inference.py \
---model_path=output/coqa_774M_5x2000.h5 \
---json_hparams=models/774M/hparams.json \
---json_encoder=models/774M/encoder.json \
---vocab_bpe=models/774M/vocab.bpe \
---nucleus \
---top_p=1.0 \
---temperature=1.0 \
---output_length=200 \
---starter="The 2008 Summer Olympics torch relay was run from March 24 until August 8, 2008, prior to the 2008 Summer Olympics, with the theme of \“one world, one dream\”. Plans for the relay were announced on April 26, 2007, in Beijing, China. The relay, also called by the organizers as the “Journey of Harmony”, lasted 129 days and carried the torch 137,000 km (85,000 mi) – the longest distance of any Olympic torch relay since the tradition was started ahead of the 1936 Summer Olympics. After being lit at the birthplace of the Olympic Games in Olympia, Greece on March 24, the torch traveled to the Panathinaiko Stadium in Athens, and then to Beijing, arriving on March 31. From Beijing, the torch was following a route passing through six continents. The torch has visited cities along the Silk Road, symbolizing ancient links between China and the rest of the world. The relay also included an ascent with the flame to the top of Mount Everest on the border of Nepal and Tibet, China from the Chinese side, which was closed specially for the event. \n Q: What was the theme? \n A: “one world, one dream”. \n Q: What was the length of the race? \n A: 137,000 km \n Q: Was it larger than previous ones? \n A: No \n Q: Where did the race begin? \n A: Olympia, Greece \n Q: Is there anything notable about that place? \n A: birthplace of Olympic Games \n Q: Where did they go after? \n A: Athens \n Q: How many days was the race? \n A: seven \n Q: Did they visit any notable landmarks? \n A: Panathinaiko Stadium \n Q: And did they climb any mountains? \n A:"
 ```

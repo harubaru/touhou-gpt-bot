@@ -14,17 +14,7 @@ from src import net
 
 parser = argparse.ArgumentParser(description='Input argument parser.')
 
-parser.add_argument('--model', type=str, help='name of model',
-                    choices=['124M', '355M', '774M', '1558M'],
-                    default='124M')
-
-parser.add_argument('--model_ckpt', type=str, help='path of model checkpoint')
-
-parser.add_argument('--json_hparams', type=str, help='path to the json of hyper parameters')
-
-parser.add_argument('--json_encoder', type=str, help='path to the json of encoder')
-
-parser.add_argument('--vocab_bpe', type=str, help='path to the vocabulary bpe')
+parser.add_argument('--model_dir', type=str, help='name of model')
 
 parser.add_argument('--eager', help='flag to turn on/off eager mode', action='store_true')
 
@@ -61,18 +51,14 @@ args = parser.parse_args()
 
 def main():
 
-    if not args.eager:
-        tf.compat.v1.disable_eager_execution()
-
-    if not args.json_encoder:
-        print('json_encoder must be provided.')
-        print('quit program.')
+    if not args.model_dir:
+        print('model_path must be provided')
         exit()
 
-    if not args.vocab_bpe:
-        print('vocab.bpe must be provided.')
-        print('quit program.')
-        exit()
+    args.model_ckpt = args.model_dir + "model.ckpt"
+    args.json_hparams = args.model_dir + "hparams.json"
+    args.json_encoder = args.model_dir + "encoder.json"
+    args.vocab_bpe = args.model_dir + "vocab.bpe"
 
     if not os.path.exists('output'):
         os.makedirs('output')
@@ -82,14 +68,6 @@ def main():
     ds = importlib.import_module(
         "src.load_" + args.data_loader).create_dataset(
         enc, args.length, args.dataset_path, args.batch_size, args.steps_per_epoch, args.num_epoch)
-
-    # for value in ds.take(10):
-    #     x = enc.decode(value[0][0].numpy())
-    #     print(x)
-    #     print(len(value[0][0]))
-    #     input("Press Enter to continue...")
-
-    # exit()
 
     model = net.create_model(args)
 
