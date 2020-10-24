@@ -14,13 +14,7 @@ from src import utils
 
 parser = argparse.ArgumentParser(description='Input argument parser.')
 
-parser.add_argument('--model_path', type=str, help='path of model')
-
-parser.add_argument('--json_hparams', type=str, help='path to the json of hyper parameters')
-
-parser.add_argument('--json_encoder', type=str, help='path to the json of encoder')
-
-parser.add_argument('--vocab_bpe', type=str, help='path to the vocabulary bpe')
+parser.add_argument('--model_dir', type=str, help='path of model folder')
 
 parser.add_argument('--nucleus', help='flag to turn on/off nucleus sampling', action='store_true')
 
@@ -48,18 +42,20 @@ def main():
 
     tf.compat.v1.disable_eager_execution()
 
-    if not args.json_encoder:
-        print('json_encoder must be provided.')
+    if not args.model_dir:
+        print('model path must be provided.')
         print('quit program.')
         exit()
 
-    if not args.vocab_bpe:
-        print('vocab.bpe must be provided.')
-        print('quit program.')
-        exit()
+    args.model_path = args.model_dir + "model.ckpt"
+    args.json_hparams = args.model_dir + "hparams.json"
+    args.json_encoder = args.model_dir + "encoder.json"
+    args.vocab_bpe = args.model_dir + "vocab.bpe"
 
     args.starter = args.starter.replace("\\n", "\n")
     args.starter = args.starter.replace("\\'", "'")
+
+    print()
 
     # print(args.starter)
     # exit()
