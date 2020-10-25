@@ -7,14 +7,16 @@ import tensorflow as tf
 from tensorflow import keras
 from tensorflow.keras.callbacks import LearningRateScheduler
 
-
+from src.layers import EmbeddingSim, EmbeddingRet, PositionEmbedding, LayerNormalization, _get_encoder_component, gelu, ScaledDotProductAttention, MultiHeadAttention, FeedForward
 from src import encoder
 from src import net
-
+from src import utils
 
 parser = argparse.ArgumentParser(description='Input argument parser.')
 
 parser.add_argument('--model_dir', type=str, help='name of model')
+
+parser.add_argument('--custom_model', type=str, help='path to custom model')
 
 parser.add_argument('--eager', help='flag to turn on/off eager mode', action='store_true')
 
@@ -48,6 +50,7 @@ parser.add_argument('--output_name', type=str, help='name of output model')
 
 args = parser.parse_args()
 
+#python finetune.py --model_dir=models/124M/ --output_name=touhou_124_5x10.h5 --dataset_path=dataset/touhou-nsfw.txt --data_loader=text --num_epoch=5 --decay_epochs="4,5" --steps_per_epoch=10
 
 def main():
 
@@ -55,7 +58,11 @@ def main():
         print('model_path must be provided')
         exit()
 
-    args.model_ckpt = args.model_dir + "model.ckpt"
+    if args.custom_model:
+        args.model = args.custom_model
+    else:
+        args.model = args.model_dir + "model.ckpt"
+    
     args.json_hparams = args.model_dir + "hparams.json"
     args.json_encoder = args.model_dir + "encoder.json"
     args.vocab_bpe = args.model_dir + "vocab.bpe"
@@ -69,10 +76,25 @@ def main():
         "src.load_" + args.data_loader).create_dataset(
         enc, args.length, args.dataset_path, args.batch_size, args.steps_per_epoch, args.num_epoch)
 
-    model = net.create_model(args)
-
-    # restore weight
-    model = net.load_weights(model, args)
+    if args.model.split('.')[-1] == 'h5':
+        model = keras.models.load_model(
+        args.model,
+        custom_objects={'EmbeddingSim': EmbeddingSim,
+                        'EmbeddingRet': EmbeddingRet,
+                        'PositionEmbedding': PositionEmbedding,
+                        'LayerNormalization': LayerNormalization,
+                        'ScaledDotProductAttention': ScaledDotProductAttention,
+                        'MultiHeadAttention': MultiHeadAttention,
+                        'FeedForward': FeedForward,
+                        'gelu': gelu,
+                        'loss': net.loss})
+    elif args.model.split('.')[-1] == 'ckpt':
+        args.model_ckpt = args.model
+        model = net.create_model(args)
+        model = net.load_weights(model, args)
+    else:
+        print('Unrecognized model format')
+        exit()
 
     model.compile(
         optimizer=keras.optimizers.Adam(),
