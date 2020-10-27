@@ -43,7 +43,6 @@ def init_model(args):
 def run_model(args, input_str):
         # TODO: Cleanup code since batch_size is not necessary.
 
-        input_str = input_str.replace("\\n", "\n")
         input_str = input_str.replace("\\'", "'")
 
         input_data = [args.enc.encode(input_str)] * args.batch_size
@@ -70,4 +69,6 @@ def run_model(args, input_str):
         
         for index in range(args.batch_size):
                 output = args.enc.decode(input_data[index])
+                # Remove input
+                output = output[len(input_str):]
                 return output

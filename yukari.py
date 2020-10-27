@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Input argument parser.')
 parser.add_argument('--token', type=str, help='Bot token. Do not share this!')
 parser.add_argument('--prefix', type=str, help='Prefix for interacting with the bot.', default='y!')
 parser.add_argument('--context', type=str, help='Context string that is prefixed in every Act statement. It is filled with information that the AI should remember. This information is needed if you wish to inquire the AI about topics that haven\'nt been trained into it\'s model.',
-        default='Nuwardia is a chatroom on a chat service called Discord that is a tight-knit community filled with friends. Nuwardia is filled with a group of friends that talk about topics ranging from technology to politics. Usually, there are some debates that occur in Nuwardia but it isn\'nt too bad. You are relaxing one day when Yukari decided to materialize in your room. Yukari\'s intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in conversation with Yukari.')
+        default='Nuwardia is a chatroom on a chat service called Discord that is a tight-knit community filled with friends. Nuwardia is filled with a group of friends that talk about topics ranging from technology to politics. Usually, there are some debates that occur in Nuwardia but it isn\'t too bad. You are relaxing one day when Yukari decided to materialize in your room. Yukari\'s intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in conversation with Yukari.')
 
 parser.add_argument('--model_dir', type=str, help='path of model folder')
 parser.add_argument('--custom_model', type=str, help='path to custom model')
@@ -39,7 +39,7 @@ def log(com, logstr):
 
 def actjob(message):
         log('ai  ', 'Processing Act job -- [' + message + ']')
-        return run_model(args, message)
+        return run_model(args, args.context + message + '\n')
 
 @client.event
 async def on_ready():
