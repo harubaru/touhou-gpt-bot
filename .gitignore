@@ -3,3 +3,4 @@ models/*
 *.pyc
 *.h5
 run_bash.sh
+run.sh

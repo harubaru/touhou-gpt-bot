@@ -70,8 +70,6 @@ def create_model(args):
 
     model = keras.models.Model(inputs=input_layer, outputs=output_layer)
 
-
-
     return model
 
 
