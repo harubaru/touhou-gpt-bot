@@ -39,8 +39,22 @@ def init_model(args):
                 exit()
         
         args.model.trainable = False
+        args.input_stack = []
 
 def run_model(args, input_str):
+        # Push the input_str into a list, and popping off the last members if it is past args.past_length
+
+        args.input_stack.append(input_str)
+
+        # if past_length is 0, remember indefinitely.
+        if args.past_length != 0:
+                if len(args.input_stack) > args.past_length:
+                        args.input_stack.pop()
+
+        input_str = args.context + '\n'
+        for i in args.input_stack:
+                input_str = input_str + i
+        
         # TODO: Cleanup code since batch_size is not necessary.
 
         input_str = input_str.replace("\\'", "'")
@@ -71,4 +85,12 @@ def run_model(args, input_str):
                 output = args.enc.decode(input_data[index])
                 # Remove input
                 output = output[len(input_str):]
+
+                # Process the output
+                if output[0] != '\n':
+                        output = output.split('\n')[0]
+                else:
+                        output = output.split('\n')[1]
+
+                args.input_stack.append(output)
                 return output

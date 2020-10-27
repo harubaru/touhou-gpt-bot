@@ -24,6 +24,7 @@ parser.add_argument('--top_k', type=int, help='cut off ranking for top K samplin
 parser.add_argument('--temperature', type=float, help='temperature in text generation. Higher temperature creates more randomness in the results.', default=0.2)
 parser.add_argument('--batch_size', type=int, help='batch size', default=1)
 parser.add_argument('--output_length', type=int, help='length of output sequence (number of tokens)', default=50)
+parser.add_argument('--past_length', type=int, help='amount of memorized inputs and responses', default=16)
 
 args = parser.parse_args()
 
@@ -39,7 +40,7 @@ def log(com, logstr):
 
 def actjob(message):
         log('ai  ', 'Processing Act job -- [' + message + ']')
-        return run_model(args, args.context + message + '\n')
+        return run_model(args, message + '\n')
 
 @client.event
 async def on_ready():
@@ -53,11 +54,55 @@ async def on_ready():
                 aliases=['r'],
                 pass_context=True)
 async def resetcmd(context):
-        await context.message.channel.send("Standby... This will take a while...")
         log('ai  ', 'Restarting AI inferencer...')
-        # reset AI here
+        args.input_stack = []
         log('ai  ', 'Done!~')
         await context.message.channel.send("Done!~")
+
+@client.command(name='temp',
+                description='Sets the temperature for the AI. Higher number == More random results.',
+                brief='Sets the temperature for the AI.',
+                pass_context=True)
+async def tempcmd(context):
+        log('ai  ', 'Changing temperature to ' + context.message.content[7:])
+        args.temperature = float(context.message.content[7:])
+
+@client.command(name='top_k',
+                description='Cut off ranking for top K sampling. Higher number == More creative results',
+                brief='Cut off ranking for top K sampling.',
+                pass_context=True)
+async def top_kcmd(context):
+        log('ai  ', 'Changing Top_K to ' + context.message.content[8:])
+        args.top_k = float(context.message.content[8:])
+
+@client.command(name='top_p',
+                description='Adjust the summed probabilities of what tokens should considered to be generated.',
+                brief='Use this with Nucleus sampling to get rid of neural degeneration.',
+                pass_context=True)
+async def top_pcmd(context):
+        log('ai  ', 'Changing Top_P to ' + context.message.content[8:])
+        args.top_p = float(context.message.content[8:])
+
+@client.command(name='nucleus',
+                description='Toggle nucleus sampling',
+                brief='Toggle this to solve repitition.',
+                pass_context=True)
+async def nucleuscmd(context):
+        args.nucleus = not args.nucleus
+        if args.nucleus == True:
+                log('ai  ', 'Enabled Nucleus Sampling')
+                await context.message.channel.send("Nucleus sampling enabled.")
+        else:
+                log('ai  ', 'Disabled Nucleus Sampling')
+                await context.message.channel.send("Nucleus sampling disabled.")
+
+@client.command(name='memlength',
+                description='Length of how many actions it will remember',
+                brief='Length of how many actions it will remember',
+                pass_context=True)
+async def lengthcmd(context):
+        log('ai  ', 'Changing output_length to ' + context.message.content[12:])
+        args.past_length = int(context.message.content[12:])
 
 @client.command(name='say',
                 description='Say something to Yukari!',
@@ -65,7 +110,7 @@ async def resetcmd(context):
                 aliases=['s'],
                 pass_context=True)
 async def saycmd(context):
-        message = " You say, \"" + context.message.content[6:] + "\""
+        message = "You say, \"" + context.message.content[6:] + "\""
 
         await context.message.channel.send(actjob(message))
 
@@ -76,7 +121,7 @@ async def saycmd(context):
                 pass_context=True)
 async def docmd(context):
         message = context.message.content[5:]
-        message = " You " + message[0].lower() + message[1:]
+        message = "You " + message[0].lower() + message[1:]
         if message[-1:] != '.':
                 message = message + '.'
 
