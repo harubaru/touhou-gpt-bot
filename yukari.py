@@ -4,8 +4,8 @@ from discord import Status
 from discord import Game
 from discord.ext.commands import Bot
 
-from story import init_model
-from story import run_model
+from story import *
+from memory import *
 
 start_time = time.time()
 
@@ -25,6 +25,7 @@ parser.add_argument('--temperature', type=float, help='temperature in text gener
 parser.add_argument('--batch_size', type=int, help='batch size', default=1)
 parser.add_argument('--output_length', type=int, help='length of output sequence (number of tokens)', default=50)
 parser.add_argument('--past_length', type=int, help='amount of memorized inputs and responses', default=16)
+parser.add_argument('--mem_path', type=str, help='path to memories json file', default='yukarimemory.json')
 
 args = parser.parse_args()
 
@@ -127,12 +128,36 @@ async def docmd(context):
 
         await context.message.channel.send(actjob(message))
 
+@client.command(name='forget',
+                description='Make Yukari forget something!',
+                brief='Make Yukari forget something',
+                pass_context=True)
+async def forgetcmd(context, key):
+        mem_delete(key)
+        mem_save(args.mem_path)
+        log('mem ', 'Forgetting key [' + key + ']')
+
+@client.command(name='remember',
+                description='Make Yukari permanently remember something!',
+                brief='Make Yukari remember something',
+                pass_context=True)
+async def remembercmd(context, key, description):
+        mem_encode(key, description)
+        mem_save(args.mem_path)
+        log('mem ', 'Remembering key [' + key + '] as {' + description + '}')
+
 def main():
         if not args.token:
                 print('token must be provided')
                 exit()
 
         log('init', 'Server started at ' + time.strftime("%Y-%m-%d %H:%M"))
+
+        if mem_load(args.mem_path):
+                log('init', 'Loaded memories')
+        else:
+                log('init', 'Memory file not found, creating a new one')
+
         log('init', 'Initializing model inferencer')
         init_model(args)
         client.run(args.token)

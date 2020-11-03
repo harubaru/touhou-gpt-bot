@@ -8,7 +8,10 @@ from src import encoder
 from src import net
 from src import utils
 
+from memory import mem_compile
+
 def init_model(args):
+        args.input_stack = []
         tf.compat.v1.disable_eager_execution()
 
         if not args.model_dir or not args.custom_model:
@@ -39,7 +42,6 @@ def init_model(args):
                 exit()
         
         args.model.trainable = False
-        args.input_stack = []
 
 def run_model(args, input_str):
         # Push the input_str into a list, and popping off the last members if it is past args.past_length
@@ -51,7 +53,7 @@ def run_model(args, input_str):
                 if len(args.input_stack) > args.past_length:
                         args.input_stack.pop()
 
-        input_str = args.context + '\n'
+        input_str = args.context + '\n' + mem_compile(input_str) + '\n'
         for i in args.input_stack:
                 input_str = input_str + i
         
