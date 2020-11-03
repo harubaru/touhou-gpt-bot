@@ -75,31 +75,34 @@ def main():
     ds = importlib.import_module(
         "src.load_" + args.data_loader).create_dataset(
         enc, args.length, args.dataset_path, args.batch_size, args.steps_per_epoch, args.num_epoch)
+        
+    # Setup TensorFlow to use a distribution strategy to perform compute across multiple devices.
+    strategy = tf.distribute.experimental.CentralStorageStrategy()
+    with strategy.scope():
+        if args.model.split('.')[-1] == 'h5':
+            model = keras.models.load_model(
+            args.model,
+            custom_objects={'EmbeddingSim': EmbeddingSim,
+                            'EmbeddingRet': EmbeddingRet,
+                            'PositionEmbedding': PositionEmbedding,
+                            'LayerNormalization': LayerNormalization,
+                            'ScaledDotProductAttention': ScaledDotProductAttention,
+                            'MultiHeadAttention': MultiHeadAttention,
+                            'FeedForward': FeedForward,
+                            'gelu': gelu,
+                            'loss': net.loss})
+        elif args.model.split('.')[-1] == 'ckpt':
+            args.model_ckpt = args.model
+            model = net.create_model(args)
+            model = net.load_weights(model, args)
+        else:
+            print('Unrecognized model format')
+            exit()
 
-    if args.model.split('.')[-1] == 'h5':
-        model = keras.models.load_model(
-        args.model,
-        custom_objects={'EmbeddingSim': EmbeddingSim,
-                        'EmbeddingRet': EmbeddingRet,
-                        'PositionEmbedding': PositionEmbedding,
-                        'LayerNormalization': LayerNormalization,
-                        'ScaledDotProductAttention': ScaledDotProductAttention,
-                        'MultiHeadAttention': MultiHeadAttention,
-                        'FeedForward': FeedForward,
-                        'gelu': gelu,
-                        'loss': net.loss})
-    elif args.model.split('.')[-1] == 'ckpt':
-        args.model_ckpt = args.model
-        model = net.create_model(args)
-        model = net.load_weights(model, args)
-    else:
-        print('Unrecognized model format')
-        exit()
-
-    model.compile(
-        optimizer=keras.optimizers.Adam(),
-        loss=net.loss
-    )
+        model.compile(
+            optimizer=keras.optimizers.Adam(),
+            loss=net.loss
+        )
 
     # fine tune
     model.fit(ds,
@@ -108,6 +111,8 @@ def main():
               callbacks=[LearningRateScheduler(net.create_schedule(args))])
 
     model.save(os.path.join('output', args.output_name), include_optimizer=False)
+
+    model.evaluate(ds)
 
 if __name__ == '__main__':
     main()

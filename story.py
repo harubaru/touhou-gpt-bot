@@ -12,6 +12,11 @@ from memory import mem_compile
 
 def init_model(args):
         args.input_stack = []
+
+        if args.gpu_index:
+                physdevs = tf.config.list_physical_devices('GPU')
+                tf.config.experimental.set_virtual_device_configuration(physdevs[args.gpu_index], [tf.config.LogicalDeviceConfiguration(args.gpu_max_mem)])
+        
         tf.compat.v1.disable_eager_execution()
 
         if not args.model_dir or not args.custom_model:

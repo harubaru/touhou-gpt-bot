@@ -47,3 +47,6 @@ def mem_load(filepath):
         except OSError as e:
                 print('Could not find ' + filepath)
                 return False
+
+def mem_dict():
+        return memories

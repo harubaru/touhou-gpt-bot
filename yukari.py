@@ -14,7 +14,7 @@ parser = argparse.ArgumentParser(description='Input argument parser.')
 parser.add_argument('--token', type=str, help='Bot token. Do not share this!')
 parser.add_argument('--prefix', type=str, help='Prefix for interacting with the bot.', default='y!')
 parser.add_argument('--context', type=str, help='Context string that is prefixed in every Act statement. It is filled with information that the AI should remember. This information is needed if you wish to inquire the AI about topics that haven\'nt been trained into it\'s model.',
-        default='Nuwardia is a chatroom on a chat service called Discord that is a tight-knit community filled with friends. Nuwardia is filled with a group of friends that talk about topics ranging from technology to politics. Usually, there are some debates that occur in Nuwardia but it isn\'t too bad. You are relaxing one day when Yukari decided to materialize in your room. Yukari\'s intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in conversation with Yukari.')
+        default='You are a man from the Outside World who goes by the name \"Anon\". You are relaxing one day when Yukari decided to materialize in your room. Yukari is a woman who sleeps all day and lives for the enjoyment of life. She is well-acquainted with everyone in Gensokyo and knows a lot of people. She is a very wise woman and is an expert at mathematics. Yukari\'s current intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in a conversation with Yukari and she is the person that you are talking to.')
 
 parser.add_argument('--model_dir', type=str, help='path of model folder')
 parser.add_argument('--custom_model', type=str, help='path to custom model')
@@ -26,6 +26,8 @@ parser.add_argument('--batch_size', type=int, help='batch size', default=1)
 parser.add_argument('--output_length', type=int, help='length of output sequence (number of tokens)', default=50)
 parser.add_argument('--past_length', type=int, help='amount of memorized inputs and responses', default=16)
 parser.add_argument('--mem_path', type=str, help='path to memories json file', default='yukarimemory.json')
+parser.add_argument('--gpu_index', type=int, help='which GPU to inference the AI on', default=None)
+parser.add_argument('--gpu_max_mem', type=int, help='sets max GPU VRAM usage in megabytes', default=4096)
 
 args = parser.parse_args()
 
@@ -40,8 +42,13 @@ def log(com, logstr):
         print('[' + trunc(timestamp, 4) + '] ' + com + ': ' + logstr)
 
 def actjob(message):
-        log('ai  ', 'Processing Act job -- [' + message + ']')
-        return run_model(args, message + '\n')
+        if message != '':
+                log('ai  ', 'Processing Act job -- [' + message + ']')
+                message = message + '\n'
+        else:
+                log('ai  ', 'Processing Redo job')
+        
+        return run_model(args, message)
 
 @client.event
 async def on_ready():
@@ -128,6 +135,15 @@ async def docmd(context):
 
         await context.message.channel.send(actjob(message))
 
+@client.command(name='redo',
+                description='Redo an action',
+                brief='Redo an action',
+                pass_context=True)
+async def redocmd(context):
+        args.input_stack.pop()
+        
+        await context.message.channel.send(actjob(''))
+
 @client.command(name='forget',
                 description='Make Yukari forget something!',
                 brief='Make Yukari forget something',
@@ -145,6 +161,17 @@ async def remembercmd(context, key, description):
         mem_encode(key, description)
         mem_save(args.mem_path)
         log('mem ', 'Remembering key [' + key + '] as {' + description + '}')
+
+@client.command(name='memories',
+                description='List memories',
+                brief='List saved memories',
+                pass_context=True)
+async def memoriescmd(context):
+        message = 'Saved Memories:\n'
+        for key, desc, in mem_dict().items():
+                message = message + '**' + key + '** : ``' + desc + '``\n'
+        
+        await context.message.channel.send(message)
 
 def main():
         if not args.token:
