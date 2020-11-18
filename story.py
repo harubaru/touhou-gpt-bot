@@ -19,11 +19,15 @@ def init_model(args):
         
         tf.compat.v1.disable_eager_execution()
 
-        if not args.model_dir or not args.custom_model:
-                print('model and custom model path must be provided!')
+        if not args.model_dir:
+                print('model path must be provided!')
                 exit()
-        
-        args.model_path = args.custom_model
+
+        if not args.custom_model:
+                args.model_path = args.model_dir + "model.ckpt"
+        else:
+                args.model_path = args.custom_model
+
         args.json_hparams = args.model_dir + "hparams.json"
         args.json_encoder = args.model_dir + "encoder.json"
         args.vocab_bpe = args.model_dir + "vocab.bpe"
@@ -42,6 +46,11 @@ def init_model(args):
                                 'FeedForward': FeedForward,
                                 'gelu': gelu,
                                 'loss': net.loss})
+        elif args.model_path.split('.')[-1] == 'ckpt':
+                args.model_ckpt = args.model_path
+                args.model = net.create_model(args)
+                args.model = net.load_weights(args.model, args)
+                args.model.compile(optimizer=keras.optimizers.Adam(), loss=net.loss)
         else:
                 print('Unsupported custom model format!')
                 exit()
@@ -69,6 +78,7 @@ def run_model(args, input_str):
         input_data = [args.enc.encode(input_str)] * args.batch_size
         start_length = [len(data) for data in input_data]
         flag_stop = [False] * args.batch_size
+        stop = False
 
         # Inference the model..
         for shift in range(args.output_length):
@@ -84,20 +94,19 @@ def run_model(args, input_str):
                                 
                                 input_data[index].append(next_token)
                                 if next_token == 50256:
-                                        flag_stop[index] = true
+                                        flag_stop[index] = True
                         else:
                                 input_data[index].append(50256)
-        
-        for index in range(args.batch_size):
-                output = args.enc.decode(input_data[index])
-                # Remove input
-                output = output[len(input_str):]
+                        
+                        output = args.enc.decode(input_data[index])
+                        output = output[len(input_str):]
 
-                # Process the output
-                if output[0] != '\n':
-                        output = output.split('\n')[0]
-                else:
-                        output = output.split('\n')[1]
+                        for i, stopchar in enumerate(output):
+                                if ('\n' == stopchar) and (i > 0):
+                                        stop = True
 
-                args.input_stack.append(output)
-                return output
+                if stop:
+                        args.input_stack.append(output)
+                        break
+
+        return output

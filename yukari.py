@@ -14,16 +14,16 @@ parser = argparse.ArgumentParser(description='Input argument parser.')
 parser.add_argument('--token', type=str, help='Bot token. Do not share this!')
 parser.add_argument('--prefix', type=str, help='Prefix for interacting with the bot.', default='y!')
 parser.add_argument('--context', type=str, help='Context string that is prefixed in every Act statement. It is filled with information that the AI should remember. This information is needed if you wish to inquire the AI about topics that haven\'nt been trained into it\'s model.',
-        default='You are a man from the Outside World who goes by the name \"Anon\". You are relaxing one day when Yukari decided to materialize in your room. Yukari is a woman who sleeps all day and lives for the enjoyment of life. She is well-acquainted with everyone in Gensokyo and knows a lot of people. She is a very wise woman and is an expert at mathematics. Yukari\'s current intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in a conversation with Yukari and she is the person that you are talking to.')
+        default='You are a man from the Outside World who goes by the name \"Anon\". You are relaxing one day when Yukari decided to materialize in your room. Yukari is a woman who sleeps all day and lives for the enjoyment of life. She is well-acquainted with everyone in Gensokyo and knows a lot of people. She is a very wise woman and is an expert at mathematics. Yukari\'s current intentions are solely to have a friendly conversation with you while you are relaxing in your room. You engage in a conversation with Yukari and she is the person that you are talking to.\nYou say, \"Hello, Yukari!\".\nYukari says, \"Hello, Anon.\".')
 
 parser.add_argument('--model_dir', type=str, help='path of model folder')
 parser.add_argument('--custom_model', type=str, help='path to custom model')
 parser.add_argument('--nucleus', help='flag to turn on/off nucleus sampling', action='store_true')
-parser.add_argument('--top_p', type=float, help='cut off probablity for nucleus sampling', default=1.0)
+parser.add_argument('--top_p', type=float, help='cut off probablity for nucleus sampling', default=0.9)
 parser.add_argument('--top_k', type=int, help='cut off ranking for top K sampling', default=20)
-parser.add_argument('--temperature', type=float, help='temperature in text generation. Higher temperature creates more randomness in the results.', default=0.2)
+parser.add_argument('--temperature', type=float, help='temperature in text generation. Higher temperature creates more randomness in the results.', default=0.8)
 parser.add_argument('--batch_size', type=int, help='batch size', default=1)
-parser.add_argument('--output_length', type=int, help='length of output sequence (number of tokens)', default=50)
+parser.add_argument('--output_length', type=int, help='length of output sequence (number of tokens)', default=500)
 parser.add_argument('--past_length', type=int, help='amount of memorized inputs and responses', default=16)
 parser.add_argument('--mem_path', type=str, help='path to memories json file', default='yukarimemory.json')
 parser.add_argument('--gpu_index', type=int, help='which GPU to inference the AI on', default=None)
@@ -48,7 +48,12 @@ def actjob(message):
         else:
                 log('ai  ', 'Processing Redo job')
         
-        return run_model(args, message)
+        output = run_model(args, message)
+        logged_output = output.replace('\n', '')
+
+        log('ai  ', 'Generated result -- [' + logged_output + ']')
+
+        return output
 
 @client.event
 async def on_ready():
@@ -93,7 +98,7 @@ async def top_pcmd(context):
 
 @client.command(name='nucleus',
                 description='Toggle nucleus sampling',
-                brief='Toggle this to solve repitition.',
+                brief='Toggle this to solve repetition.',
                 pass_context=True)
 async def nucleuscmd(context):
         args.nucleus = not args.nucleus
@@ -111,6 +116,23 @@ async def nucleuscmd(context):
 async def lengthcmd(context):
         log('ai  ', 'Changing output_length to ' + context.message.content[12:])
         args.past_length = int(context.message.content[12:])
+
+@client.command(name='outlength',
+                description='Change length of generated output',
+                brief='Output length',
+                pass_context=True)
+async def outlengthcmd(context):
+        log('ai  ', 'Changing output_length to ' + context.message.content[12:])
+        args.output_length = int(context.message.content[12:])
+
+@client.command(name='raw',
+                description='Feed raw input to Yukari!',
+                brief='Feed raw input to Yukari!',
+                pass_context=True)
+async def rawcmd(context):
+        message = context.message.content[6:]
+        
+        await context.message.channel.send(actjob(message))
 
 @client.command(name='say',
                 description='Say something to Yukari!',
