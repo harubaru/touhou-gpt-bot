@@ -1,8 +1,11 @@
 import argparse
 import time
+from pastebin import PastebinAPI
 from discord import Status
 from discord import Game
 from discord.ext.commands import Bot
+from discord import Embed
+from discord import Colour
 
 from story import *
 from memory import *
@@ -28,10 +31,20 @@ parser.add_argument('--past_length', type=int, help='amount of memorized inputs 
 parser.add_argument('--mem_path', type=str, help='path to memories json file', default='yukarimemory.json')
 parser.add_argument('--gpu_index', type=int, help='which GPU to inference the AI on', default=None)
 parser.add_argument('--gpu_max_mem', type=int, help='sets max GPU VRAM usage in megabytes', default=4096)
+parser.add_argument('--timeout', type=int, help='Max time in seconds for an act job to run for', default=120)
+
+# pastebin stuff
+parser.add_argument('--pastebin_key', type=str, help='Pastebin dev key')
 
 args = parser.parse_args()
 
 client = Bot(command_prefix=args.prefix)
+paste  = PastebinAPI()
+
+embed_colour = Colour.from_rgb(178, 0, 255)
+
+def pastebin_upload(content):
+        return paste.paste(api_dev_key=args.pastebin_key, api_paste_code=content, api_user_key=None, paste_name=None, paste_format=None, paste_private='unlisted', paste_expire_date='N')
 
 def trunc(num, digits):
         sp = str(num).split('.')
@@ -41,7 +54,7 @@ def log(com, logstr):
         timestamp = time.time() - start_time
         print('[' + trunc(timestamp, 4) + '] ' + com + ': ' + logstr)
 
-def actjob(message):
+def actjob(message, author):
         if message != '':
                 log('ai  ', 'Processing Act job -- [' + message + ']')
                 message = message + '\n'
@@ -53,7 +66,9 @@ def actjob(message):
 
         log('ai  ', 'Generated result -- [' + logged_output + ']')
 
-        return output
+        embed = Embed(description="```" + output + '```\n\n**Response generated for:** ``' + author + '``', colour=embed_colour)
+
+        return embed
 
 @client.event
 async def on_ready():
@@ -70,7 +85,7 @@ async def resetcmd(context):
         log('ai  ', 'Restarting AI inferencer...')
         args.input_stack = []
         log('ai  ', 'Done!~')
-        await context.message.channel.send("Done!~")
+        await context.message.channel.send(embed=Embed(title="Done~!", colour=embed_colour))
 
 @client.command(name='temp',
                 description='Sets the temperature for the AI. Higher number == More random results.',
@@ -104,10 +119,10 @@ async def nucleuscmd(context):
         args.nucleus = not args.nucleus
         if args.nucleus == True:
                 log('ai  ', 'Enabled Nucleus Sampling')
-                await context.message.channel.send("Nucleus sampling enabled.")
+                await context.message.channel.send(embed=Embed(title="Nucleus sampling enabled.", colour=embed_colour))
         else:
                 log('ai  ', 'Disabled Nucleus Sampling')
-                await context.message.channel.send("Nucleus sampling disabled.")
+                await context.message.channel.send(embed=Embed(title="Nucleus sampling disabled.", colour=embed_colour))
 
 @client.command(name='memlength',
                 description='Length of how many actions it will remember',
@@ -132,7 +147,7 @@ async def outlengthcmd(context):
 async def rawcmd(context):
         message = context.message.content[6:]
         
-        await context.message.channel.send(actjob(message))
+        await context.message.channel.send(embed=actjob(message, context.message.author.name + '#' + context.message.author.discriminator))
 
 @client.command(name='say',
                 description='Say something to Yukari!',
@@ -142,7 +157,7 @@ async def rawcmd(context):
 async def saycmd(context):
         message = "You say, \"" + context.message.content[6:] + "\""
 
-        await context.message.channel.send(actjob(message))
+        await context.message.channel.send(embed=actjob(message, context.message.author.name + '#' + context.message.author.discriminator))
 
 @client.command(name='do',
                 decsription='Do something to Yukari!',
@@ -155,7 +170,7 @@ async def docmd(context):
         if message[-1:] != '.':
                 message = message + '.'
 
-        await context.message.channel.send(actjob(message))
+        await context.message.channel.send(embed=actjob(message, context.message.author.name + '#' + context.message.author.discriminator))
 
 @client.command(name='redo',
                 description='Redo an action',
@@ -164,7 +179,37 @@ async def docmd(context):
 async def redocmd(context):
         args.input_stack.pop()
         
-        await context.message.channel.send(actjob(''))
+        await context.message.channel.send(embed=actjob('', context.message.author.name + '#' + context.message.author.discriminator))
+
+@client.command(name='undo',
+                description='Undo an action',
+                brief='Undo an action',
+                pass_context=True)
+async def undocmd(context):
+        args.input_stack.pop()
+        log('ai  ', 'Undoed an action')
+        await context.message.channel.send(embed=Embed(title='Reverted!', colour=embed_colour))
+
+@client.command(name='print',
+                description='Print conversation',
+                brief='Print the conversation',
+                pass_context=True)
+async def printcmd(context):
+        args.pastebin_key = None
+        if args.pastebin_key == None:
+                await context.message.channel.send(''.join(args.input_stack))
+        else:
+                await context.message.channel.send(pastebin_upload(''.join(args.input_stack)))
+
+@client.command(name='ctx',
+                description='Set new context for AI',
+                brief='Set new context',
+                pass_context=True)
+async def ctxcmd(context):
+        newcontext = context.message.content[6:]
+        args.context = newcontext
+        log('ai  ', 'Set context to -- [' + newcontext + ']')
+        await context.message.channel.send(embed=Embed(title='Set context!', colour=embed_colour))
 
 @client.command(name='forget',
                 description='Make Yukari forget something!',
@@ -195,6 +240,20 @@ async def memoriescmd(context):
         
         await context.message.channel.send(message)
 
+@client.command(name='params',
+                description='List AI parameters',
+                brief='List params',
+                pass_context=True)
+async def paramscmd(context):
+        description = "__Processing Parameters__\n\nTop_K = ``" + str(args.top_k) + "``\nTop_P = ``" + str(args.top_p) + "``\nTemp = ``" + str(args.temperature) + "``\nRep_P = ``1.4``\nNucleus Sampling = ``"
+        if args.nucleus == True:
+                description = description + "Enabled``"
+        else:
+                description = description + "Disabled``"
+
+        description = description + "\n\n__Memory Info__\n\nKnowledge Entries = ``" + str(len(mem_dict())) + "``\nRemembered Actions = ``" + str(len(args.input_stack)) + "``"
+        await context.message.channel.send(embed=Embed(title='AI Parameters', description=description, colour=embed_colour))
+
 def main():
         if not args.token:
                 print('token must be provided')
@@ -208,7 +267,7 @@ def main():
                 log('init', 'Memory file not found, creating a new one')
 
         log('init', 'Initializing model inferencer')
-        init_model(args)
+        init_connection(args)
         client.run(args.token)
 
 if __name__ == '__main__':
